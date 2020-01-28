@@ -1,5 +1,6 @@
 #include <Firmata.h>
 #include <FastLED.h>
+#include <EEPROM.h>
 //----- FAST LED ------
 #define NUM_LEDS 60
 #define DATA_PIN 6
@@ -57,23 +58,10 @@ uint8_t brightnessIndex = 0;
 uint8_t brightness = 16;
 //--------------------------------------------------
 
-
 CRGB leds[NUM_LEDS]; 
 CRGBPalette16 IceColors_p = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
 uint8_t currentPatternIndex = 0; // Index number of which paatern is current
 uint8_t currentColorIndex = 0;
-
-// DODAC SET GET dla parametrów
-
-// COOLING: How much does the air cool as it rises?
-// Less cooling = taller flames.  More cooling = shorter flames.
-// Default 50, suggested range 20-100
-
-
-// SPARKING: What chance (out of 255) is there that a new spark will be lit?
-// Higher chance = more roaring fire.  Lower chance = more flickery fire.
-// Default 120, suggested range 50-200.
-
 uint8_t currentPaletteIndex = 0;
 
 unsigned long actTime = 0;
@@ -81,8 +69,8 @@ unsigned long remTime = 0;
 const unsigned long period = 800;
 bool is_looping = false;
 uint8_t r;
-uint8_t g;
-uint8_t b = 255;
+uint8_t g=255;
+uint8_t b;
 
 //----- Rainbow Solid ----------
 uint8_t staticNumber = 60;
@@ -138,19 +126,19 @@ void bpm();
 void chooseOneColor();
 
 PatternAndNameList patterns = {
-  { showOneColor,         "Solid Color"}, //0
-  { BlinkPattern,         "Blink"},       //1
-  { ConfettiPattern,         "Confetti"},       //2  
-  { WaterEffect,          "Water"},       //3
-  { FireEffect,           "Fire"},        //4
-  { RainbowSolid,         "Rainbow Static"},//5
+  { showOneColor,         "Solid Color"},     //0
+  { BlinkPattern,         "Blink"},           //1
+  { ConfettiPattern,      "Confetti"},        //2  
+  { WaterEffect,          "Water"},           //3
+  { FireEffect,           "Fire"},            //4
+  { RainbowSolid,         "Rainbow Static"},  //5
   { RainbowDynamic,       "Rainbow Dynamic"}, //6
-  { Cylon,                 "Cylon"},        //7
-  { offLeds,              "Off"},          //8
-  { bpm,                  "bpm"},        //9
-  { chooseOneColor,       "HexColor"}     //10
+  { Cylon,                "Cylon"},           //7
+  { offLeds,              "Off"},             //8
+  { bpm,                  "Bpm"},             //9
+  { chooseOneColor,       "Chosen Color"}     //10
 };
-const uint8_t patternCount = 2;
+const uint8_t patternCount = 1;
 
 typedef struct {
   CRGBPalette16 palette;
@@ -170,17 +158,6 @@ const CRGBPalette16 palettes[] = {
 };
 
 const uint8_t paletteCount = ARRAY_SIZE(palettes);
-
-const String paletteNames[paletteCount] = {
-  "Rainbow",
-  "Rainbow Stripe",
-  "Cloud",
-  "Lava",
-  "Ocean",
-  "Forest",
-  "Party",
-  "Heat",
-};
 
 typedef void (*Color)();
 typedef Color ColorList[];
@@ -230,14 +207,6 @@ void showWhite(){
   setOneColor(CRGB::White);
 }
 
-void setPalette(uint8_t value)
-{
-  if (value >= paletteCount)
-    value = paletteCount - 1;
-
-  currentPaletteIndex = value;
-}
-
 void Cylon()
 {
   fadeToBlackBy( leds, cylonNumber, cylontrail);
@@ -263,7 +232,6 @@ void bpm()
   for ( int i = 0; i < bpmNumber; i++) {
     leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
   }
-  //FastLED.show();
 }
 
 void setOneColor(CRGB color){
@@ -451,17 +419,33 @@ void changeBrightness(bool up)
   FastLED.setBrightness(brightness);
   }
 //------------------------------------------------
-
-void setBrightness(uint8_t value)
+/*void adjustPattern(bool up)
 {
-  if (value > 255)
-    value = 255;
-  else if (value < 0) value = 0;
+  if (up)
+    currentPatternIndex++;
+  else
+    currentPatternIndex--;
 
-  brightness = value;
-
-  FastLED.setBrightness(brightness);
+  // wrap around at the ends
+  if (currentPatternIndex < 0)
+    currentPatternIndex = patternCount - 1;
+  if (currentPatternIndex >= patternCount)
+    currentPatternIndex = 0;
+    
+    EEPROM.write(0, currentPatternIndex);
+    EEPROM.commit();
+  
 }
+*/
+void loadSettings()
+{
+  currentPatternIndex = EEPROM.read(0);
+  if (currentPatternIndex < 0)
+    currentPatternIndex = 0;
+  else if (currentPatternIndex >= patternCount)
+    currentPatternIndex = patternCount - 1;
+}
+
 
 void process_command1(byte argc, byte *argv){ 
     if (argc == 0) {
@@ -482,7 +466,7 @@ void process_command1(byte argc, byte *argv){
       break;
       case OFF_LEDS:
         offLeds();
-      break;
+      break;  
   }     
 }
 
@@ -751,7 +735,9 @@ void setup()
 
   systemResetCallback(); 
 
-    FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+  EEPROM.begin(512);
+  loadSettings();
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 1000);
   fill_solid(leds, NUM_LEDS, CRGB::Black);

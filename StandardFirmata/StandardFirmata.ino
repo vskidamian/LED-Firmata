@@ -1,6 +1,5 @@
 #include <Firmata.h>
 #include <FastLED.h>
-#include <EEPROM.h>
 //----- FAST LED ------
 #define NUM_LEDS 60
 #define DATA_PIN 6
@@ -9,6 +8,7 @@
 #define BRIGHTNESS  32
 #define FRAMES_PER_SECOND  120
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
+
 //----- MY COMMAND -----
 #define MY_COMMAND 0x01
 #define SET_PATTERN 0x01
@@ -19,6 +19,7 @@
 
 #define RUN 0x03
 #define CONFIG 0x04
+
 //---- ACCESSOR ----
 #define ACCESSOR 0x05
 
@@ -56,12 +57,15 @@ const uint8_t brightnessCount = 5;
 uint8_t brightnessMap[brightnessCount] = { 16, 32, 64, 128, 255 };
 uint8_t brightnessIndex = 0;
 uint8_t brightness = 16;
-//--------------------------------------------------
+
+
 
 CRGB leds[NUM_LEDS]; 
 CRGBPalette16 IceColors_p = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
 uint8_t currentPatternIndex = 0; // Index number of which paatern is current
 uint8_t currentColorIndex = 0;
+
+
 uint8_t currentPaletteIndex = 0;
 
 unsigned long actTime = 0;
@@ -69,40 +73,40 @@ unsigned long remTime = 0;
 const unsigned long period = 800;
 bool is_looping = false;
 uint8_t r;
-uint8_t g=255;
-uint8_t b;
+uint8_t g;
+uint8_t b = 255;
 
 //----- Rainbow Solid ----------
 uint8_t staticNumber = 60;
 uint8_t staticDelta = 7;
-//-----------------------------
+
 //----- Rainbow Dynamic --------
 uint8_t dynamicNumber = 60;
 uint8_t dynamicDelta = 1;
-//-----------------------------
+
 //----- Fire -------------------
 uint8_t coolingFire = 49;
 uint8_t sparkingFire = 60;
-//-----------------------------
+
 //---- Water -------------------
 uint8_t coolingWater = 49;
 uint8_t sparkingWater = 60;
-//------------------------------
+
 //---- Blink ------------------
 uint8_t blinkNumber = 60;
-//------------------------------
+
 //---- Cylon -----------------
 uint8_t cylonNumber = 60;
 uint8_t cylontrail = 20;
 uint8_t cylonspeed = 30;
-//------------------------------
+
 //---- Spark ------------------
 uint8_t sparkNumber = 60;
-//------------------------------
+
 //---- BPM --------------------
 uint8_t bpmspeed = 30;
 uint8_t bpmNumber = 60;
-//------------------------------
+
 
 typedef void (*Pattern)();
 typedef Pattern PatternList[];
@@ -136,9 +140,9 @@ PatternAndNameList patterns = {
   { Cylon,                "Cylon"},           //7
   { offLeds,              "Off"},             //8
   { bpm,                  "Bpm"},             //9
-  { chooseOneColor,       "Chosen Color"}     //10
+  { chooseOneColor,       "ChosenColor"}      //10
 };
-const uint8_t patternCount = 1;
+const uint8_t patternCount = 2;
 
 typedef struct {
   CRGBPalette16 palette;
@@ -158,6 +162,17 @@ const CRGBPalette16 palettes[] = {
 };
 
 const uint8_t paletteCount = ARRAY_SIZE(palettes);
+
+const String paletteNames[paletteCount] = {
+  "Rainbow",
+  "Rainbow Stripe",
+  "Cloud",
+  "Lava",
+  "Ocean",
+  "Forest",
+  "Party",
+  "Heat",
+};
 
 typedef void (*Color)();
 typedef Color ColorList[];
@@ -207,6 +222,14 @@ void showWhite(){
   setOneColor(CRGB::White);
 }
 
+void setPalette(uint8_t value)
+{
+  if (value >= paletteCount)
+    value = paletteCount - 1;
+
+  currentPaletteIndex = value;
+}
+
 void Cylon()
 {
   fadeToBlackBy( leds, cylonNumber, cylontrail);
@@ -232,6 +255,7 @@ void bpm()
   for ( int i = 0; i < bpmNumber; i++) {
     leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
   }
+
 }
 
 void setOneColor(CRGB color){
@@ -258,9 +282,7 @@ void chooseOneColor()
 void setOneColor(uint8_t r, uint8_t g, uint8_t b){
   solidColor = CRGB(r, g, b);
 }
-/*
-void fadeall() { for(int i = 0; i < NUM_LEDS; i++) { leds[i].nscale8(250); } }
-*/
+
 void ConfettiPattern()
 {
   fadeToBlackBy( leds, sparkNumber, 10);
@@ -272,7 +294,6 @@ void ConfettiPattern()
   
 void showOneColor(){
   fill_solid(leds, number, solidColor);
-  //FastLED.show();
 }
 
 
@@ -289,19 +310,19 @@ void BlinkPattern()
 
 void offLeds(){
   fill_solid(leds, 60, CRGB::Black);
-  //FastLED.show();
+
 }
 
 void WaterEffect()
 {  
     heatMapWater(IceColors_p, false);
-   // FastLED.show();
+
 }
 
 void FireEffect()
 {
   heatMapFire(HeatColors_p, true);
-  //FastLED.show();
+
 }
 
 
@@ -392,18 +413,16 @@ void heatMapWater(CRGBPalette16 palette, bool up)
     }
   }
 }
-//--------STATIC------------------
+
 void RainbowSolid()
 {
   fill_rainbow( leds, staticNumber, gHue, staticDelta);
-
 }
 
 void RainbowDynamic()
 {
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } 
   fill_rainbow( leds, dynamicNumber, gHue, dynamicDelta);
- // FastLED.show();
 }
 
 //--------BRIGHTNESSS-----------------------------
@@ -419,33 +438,17 @@ void changeBrightness(bool up)
   FastLED.setBrightness(brightness);
   }
 //------------------------------------------------
-/*void adjustPattern(bool up)
-{
-  if (up)
-    currentPatternIndex++;
-  else
-    currentPatternIndex--;
 
-  // wrap around at the ends
-  if (currentPatternIndex < 0)
-    currentPatternIndex = patternCount - 1;
-  if (currentPatternIndex >= patternCount)
-    currentPatternIndex = 0;
-    
-    EEPROM.write(0, currentPatternIndex);
-    EEPROM.commit();
-  
-}
-*/
-void loadSettings()
+void setBrightness(uint8_t value)
 {
-  currentPatternIndex = EEPROM.read(0);
-  if (currentPatternIndex < 0)
-    currentPatternIndex = 0;
-  else if (currentPatternIndex >= patternCount)
-    currentPatternIndex = patternCount - 1;
-}
+  if (value > 255)
+    value = 255;
+  else if (value < 0) value = 0;
 
+  brightness = value;
+
+  FastLED.setBrightness(brightness);
+}
 
 void process_command1(byte argc, byte *argv){ 
     if (argc == 0) {
@@ -466,7 +469,7 @@ void process_command1(byte argc, byte *argv){
       break;
       case OFF_LEDS:
         offLeds();
-      break;  
+      break;
   }     
 }
 
@@ -619,9 +622,6 @@ void accessor_command(byte argc,byte *argv){
     break;
   }
 }
-/*==============================================================================
- * GLOBAL VARIABLES
- *============================================================================*/
 
 #ifdef FIRMATA_SERIAL_FEATURE
 SerialFirmata serialFeature;
@@ -694,16 +694,10 @@ void sysexCallback(byte command, byte argc, byte *argv) // command to id
   }
 }
 
-/*==============================================================================
- * SETUP()
- *============================================================================*/
-
 void systemResetCallback()
 {
   isResetting = true;
 
-  // initialize a defalt state
-  // TODO: option to load config from EEPROM instead of default
 
 #ifdef FIRMATA_SERIAL_FEATURE
   serialFeature.reset();
@@ -711,22 +705,13 @@ void systemResetCallback()
 
   isResetting = false;
 }
-/*
-void stringCallback(char *myString)
-{
-  char message[] = { 1, 2, 3, 4};
-  Firmata.sendString(myString);
-  
-  Firmata.sendSysex(0x01, 4, message );
-}
-*/
+
 void setup()
 {
   Firmata.setFirmwareVersion(FIRMATA_FIRMWARE_MAJOR_VERSION, FIRMATA_FIRMWARE_MINOR_VERSION);
 
   Firmata.attach(START_SYSEX, sysexCallback);
   Firmata.attach(SYSTEM_RESET, systemResetCallback);
-//  Firmata.attach(STRING_DATA, stringCallback);
 
   Firmata.begin(57600);
   while (!Serial) {
@@ -735,18 +720,10 @@ void setup()
 
   systemResetCallback(); 
 
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
-  EEPROM.begin(512);
-  loadSettings();
+    FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 1000);
-  fill_solid(leds, NUM_LEDS, CRGB::Black);
-  //FastLED.show();
 }
-
-/*==============================================================================
- * LOOP()
- *============================================================================*/
 void updateFastLed()
 {
   actTime = millis();
@@ -762,16 +739,6 @@ void updateFastLed()
 
 void loop()
 {
-  
-  //FastLED.show();  
-  // insert a delay to keep the framerate modest
-  //FastLED.delay(1000/FRAMES_PER_SECOND); 
-
-  // do some periodic updates
-  
-  
-  /* STREAMREAD - processing incoming messagse as soon as possible, while still
-   * checking digital inputs.  */
   while (Firmata.available())
     Firmata.processInput();
 

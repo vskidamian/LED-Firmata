@@ -46,6 +46,7 @@
 #define SPARKNUMBER 0x11
 #define BPMNUMBER 0x12
 #define BPMSPEED 0x13
+#define ACTUAL_PATTERN 0x14
 
 uint8_t gHue = 0;
 uint8_t speed = 30;
@@ -64,7 +65,8 @@ CRGB leds[NUM_LEDS];
 CRGBPalette16 IceColors_p = CRGBPalette16(CRGB::Black, CRGB::Blue, CRGB::Aqua, CRGB::White);
 uint8_t currentPatternIndex = 0; // Index number of which paatern is current
 uint8_t currentColorIndex = 0;
-
+// TEST
+uint8_t PatternIndex = 0;
 
 uint8_t currentPaletteIndex = 0;
 
@@ -232,6 +234,7 @@ void setPalette(uint8_t value)
 
 void Cylon()
 {
+  PatternIndex = 7;
   fadeToBlackBy( leds, cylonNumber, cylontrail);
   int pos = beatsin16(cylonspeed, 0, cylonNumber);
   static int prevpos = 0;
@@ -248,6 +251,7 @@ void Cylon()
 
 void bpm()
 {
+  PatternIndex = 9;
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } 
   // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
   uint8_t beat = beatsin8( bpmspeed, 64, 255);
@@ -285,6 +289,7 @@ void setOneColor(uint8_t r, uint8_t g, uint8_t b){
 
 void ConfettiPattern()
 {
+  PatternIndex = 2;
   fadeToBlackBy( leds, sparkNumber, 10);
   int pos = random16(sparkNumber);
   // leds[pos] += CHSV( gHue + random8(64), 200, 255);
@@ -299,7 +304,7 @@ void showOneColor(){
 
 void BlinkPattern()
 {
-  
+  PatternIndex = 1;
   if(!is_looping) {
     solidColor = CRGB(r, g, b);
     fill_solid(leds, blinkNumber, solidColor);
@@ -309,18 +314,21 @@ void BlinkPattern()
 }
 
 void offLeds(){
+  PatternIndex = 8;
   fill_solid(leds, 60, CRGB::Black);
 
 }
 
 void WaterEffect()
 {  
+  PatternIndex = 3;
     heatMapWater(IceColors_p, false);
 
 }
 
 void FireEffect()
 {
+  PatternIndex = 4;
   heatMapFire(HeatColors_p, true);
 
 }
@@ -416,11 +424,13 @@ void heatMapWater(CRGBPalette16 palette, bool up)
 
 void RainbowSolid()
 {
+  PatternIndex = 5;
   fill_rainbow( leds, staticNumber, gHue, staticDelta);
 }
 
 void RainbowDynamic()
 {
+  PatternIndex = 6;
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } 
   fill_rainbow( leds, dynamicNumber, gHue, dynamicDelta);
 }
@@ -617,6 +627,10 @@ void accessor_command(byte argc,byte *argv){
         case BPMSPEED: {
             uint8_t datak[] = { VALUE, bpmspeed};
             Firmata.sendSysex(ACCESSOR, 2, datak);
+        } break;
+        case ACTUAL_PATTERN: {
+            uint8_t actnumber[] = {VALUE, PatternIndex};
+            Firmata.sendSysex(ACCESSOR, 2, actnumber);
         } break;
     }
     break;

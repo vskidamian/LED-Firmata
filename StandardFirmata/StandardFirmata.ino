@@ -13,6 +13,8 @@
 #define MY_COMMAND 0x01
 #define SET_PATTERN 0x01
 #define SET_SOLID 0x02
+#define GET_PATTERN 0x03
+#define GET_SOLID 0x04
 #define UP_BRIGHTNESS 0x09
 #define DOWN_BRIGHTNESS 0x0a
 #define OFF_LEDS 0x0d
@@ -25,7 +27,8 @@
 
 #define SET 0x00
 #define GET 0x01
-
+#define PATTERN 0x1b
+#define COLOR 0x1c
 #define VALUE 0x02
 #define NUMBER 0x03
 #define RED 0x04
@@ -468,9 +471,17 @@ void process_command1(byte argc, byte *argv){
       case SET_PATTERN: //0x01
         currentPatternIndex = argv[1];
         break;
+      case GET_PATTERN: {
+        uint8_t data[] = { VALUE, PATTERN, currentPatternIndex };
+        Firmata.sendSysex(MY_COMMAND, 3, data);
+      } break;
       case SET_SOLID:
         currentColorIndex = argv[1];
       break;
+      case GET_SOLID: {
+        uint8_t data1[] = {  VALUE, COLOR, currentColorIndex };
+        Firmata.sendSysex(MY_COMMAND, 3, data1);
+      } break;
       case UP_BRIGHTNESS:
         changeBrightness(true);
       break;
@@ -553,6 +564,7 @@ void accessor_command(byte argc,byte *argv){
     case GET:
       switch (argv[1]){
           case NUMBER: {
+           // uint8_t data[] = { VALUE, NUMER, number};
             uint8_t data[] = { VALUE, number};
             Firmata.sendSysex(ACCESSOR, 2, data);
           } break;
